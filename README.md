@@ -63,7 +63,7 @@ Dann sind Zugriffsliste und Daten getrennt. Die Einrichtung erfolgt einmalig.
 **2. GitHub Pages**
 *Settings → Pages → Build and deployment → Deploy from a branch*, Branch `main`,
 Ordner `/ (root)` → **Save**. Nach ein bis zwei Minuten läuft die Seite unter
-<https://cedric472000.github.io/datev_produktionsplan/>.
+<https://cedric472000.github.io/DATEV_Produktionsplan/>.
 
 **3. Erster Login**
 Die erste Person, die sich mit bestätigter Mailadresse anmeldet, wird
