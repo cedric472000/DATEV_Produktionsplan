@@ -668,6 +668,37 @@ td.cell.manual{background:var(--accent-soft);color:var(--accent)}
   .kontroll span{padding:0 5px;font-size:8.5px;letter-spacing:.05em}
   nav.tabs button{padding:11px 10px 9px}
 }
+
+/* ---------- Freie Tage: Reiter Feiertage / Schulferien ---------- */
+.kartentabs{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line)}
+.kartentabs button{background:var(--surface-2);border:0;border-bottom:3px solid transparent;padding:9px 10px 7px;cursor:pointer;
+  font:inherit;font-size:12.5px;font-weight:600;color:var(--ink-3);display:flex;align-items:center;justify-content:center;gap:7px}
+.kartentabs button+button{border-left:1px solid var(--line)}
+.kartentabs button:hover{color:var(--ink)}
+.kartentabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);border-bottom-color:var(--ink)}
+.ferstat{font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;
+  padding:1px 5px;border-radius:1px;background:var(--surface-3);color:var(--ink-3)}
+.ferstat.an{background:var(--ph-3);color:var(--surface)}
+.ferienkopf{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.schalter{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r);
+  padding:8px 10px;cursor:pointer;font:inherit;font-size:13px;font-weight:600;color:var(--ink);text-align:left}
+.schalter:hover{border-color:var(--ink)}
+.schalter .knopf{flex:none;width:30px;height:16px;background:var(--surface-3);border:1px solid var(--line-2);position:relative;transition:background .15s}
+.schalter .knopf::after{content:"";position:absolute;top:1px;left:1px;width:12px;height:12px;background:var(--ink-3);transition:transform .15s,background .15s}
+.schalter[aria-pressed="true"]{border-color:var(--ink)}
+.schalter[aria-pressed="true"] .knopf{background:var(--ph-3);border-color:var(--ph-3)}
+.schalter[aria-pressed="true"] .knopf::after{transform:translateX(14px);background:var(--surface)}
+.ferienhint{margin:0;font-size:11.5px;line-height:1.5;color:var(--ink-2)}
+.ferienhint b{color:var(--ink);font-weight:600}
+#ferienList.aus{opacity:.55}
+.hol.fer .dt{font-size:10.5px}
+.feradd{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}
+.feradd input[type=text]{grid-column:1/-1}
+.hol.fer.frei .nm{font-weight:600}
+.hol.fer.frei .dt{color:var(--ink)}
+/* Ferientage im Plan und im Kalender: feine Schraffur im Gelb der Phasenleiste */
+td.cell.ferien,.day.fer,.ferlegende{background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--ph-3) 30%,transparent) 0 2px,transparent 2px 6px)}
+.ferlegende{display:inline-block;width:9px;height:9px;border:1px solid var(--ph-3)}
 </style>
 
 <header class="topbar">
@@ -756,19 +787,38 @@ td.cell.manual{background:var(--accent-soft);color:var(--accent)}
 
     <section class="card">
       <header>
-        <h2>Feiertage &amp; freie Tage</h2>
+        <h2>Freie Tage</h2>
         <span class="hint" id="holCount"></span>
       </header>
+      <div class="kartentabs" role="tablist" aria-label="Freie Tage">
+        <button type="button" role="tab" id="tabFeiertage" data-holtab="feiertage" aria-selected="true" aria-controls="paneFeiertage">Feiertage</button>
+        <button type="button" role="tab" id="tabFerien" data-holtab="ferien" aria-selected="false" aria-controls="paneFerien">Schulferien<span class="ferstat" id="ferStat">aus</span></button>
+      </div>
       <div class="body">
         <div class="regions" id="regionBar"></div>
-        <div class="holidays" id="holidayList"></div>
-        <div class="addhol">
-          <input type="text" id="holName" placeholder="Betriebsferien …" aria-label="Bezeichnung">
-          <input type="date" id="holDate" aria-label="Datum">
-          <button type="button" class="btn sm" id="addHol">+</button>
+        <div id="paneFeiertage" role="tabpanel" aria-labelledby="tabFeiertage">
+          <div class="holidays" id="holidayList"></div>
+          <div class="addhol">
+            <input type="text" id="holName" placeholder="Betriebsferien …" aria-label="Bezeichnung">
+            <input type="date" id="holDate" aria-label="Datum">
+            <button type="button" class="btn sm" id="addHol">+</button>
+          </div>
+          <div class="rowbtns">
+            <button type="button" class="btn sm ghost" id="resetHol">Zurücksetzen</button>
+          </div>
         </div>
-        <div class="rowbtns">
-          <button type="button" class="btn sm ghost" id="resetHol">Zurücksetzen</button>
+        <div id="paneFerien" role="tabpanel" aria-labelledby="tabFerien" hidden>
+          <div class="ferienkopf">
+            <button type="button" class="schalter" id="ferienAn" aria-pressed="false"><span class="knopf" aria-hidden="true"></span>Schulferien berücksichtigen</button>
+            <p class="ferienhint" id="ferienHint"></p>
+          </div>
+          <div class="holidays" id="ferienList"></div>
+          <div class="addhol feradd">
+            <input type="text" id="ferName" placeholder="Eigene Ferien …" aria-label="Bezeichnung der Ferien">
+            <input type="date" id="ferVon" aria-label="Erster Ferientag">
+            <input type="date" id="ferBis" aria-label="Letzter Ferientag">
+            <button type="button" class="btn sm" id="addFer">+</button>
+          </div>
         </div>
       </div>
     </section>
@@ -1350,6 +1400,9 @@ function defaultState(year){
     holOff: [],      /* deaktivierte Standard-Feiertage (ids) */
     holOn:  [],      /* zusätzlich aktivierte Vorschläge (ids) */
     holExtra: [],    /* eigene freie Tage {id,name,date} */
+    ferienAn: false, /* Schulferien berücksichtigen */
+    ferienFrei: [],  /* Ferien, die als freie Tage zählen (ids) */
+    ferienExtra: [], /* eigene Ferienzeiträume {id,name,von,bis} */
     overrides: {},   /* manuelle Termine, Schlüssel "<Ausgaben-Id>:<Schritt-Nr>" */
     rechenweise: "arbeitstage",
     regelstand: REGELSTAND,       /* Stand der gelernten Regeln in state.steps */
@@ -1362,7 +1415,7 @@ function defaultState(year){
 function normState(raw, year){
   var s = raw && typeof raw === "object" ? raw : {};
   var d = defaultState(year || s.year || 2027);
-  ["year","issues","steps","regions","holOff","holOn","holExtra","overrides","view","orientation","selected","rechenweise","regelstand"]
+  ["year","issues","steps","regions","holOff","holOn","holExtra","ferienAn","ferienFrei","ferienExtra","overrides","view","orientation","selected","rechenweise","regelstand"]
     .forEach(function(k){ if (s[k] !== undefined && s[k] !== null) d[k] = s[k]; });
   if (!d.overrides || typeof d.overrides !== "object") d.overrides = {};
   if (!Array.isArray(d.regions)) d.regions = STANDARD_LAENDER.slice();
@@ -1395,7 +1448,8 @@ function normState(raw, year){
 }
 function planInhalt(){
   return {year:state.year, issues:state.issues, steps:state.steps, regions:state.regions,
-          holOff:state.holOff, holOn:state.holOn, holExtra:state.holExtra, overrides:state.overrides,
+          holOff:state.holOff, holOn:state.holOn, holExtra:state.holExtra,
+          ferienAn:!!state.ferienAn, ferienFrei:state.ferienFrei || [], ferienExtra:state.ferienExtra || [], overrides:state.overrides,
           orientation:state.orientation, rechenweise:state.rechenweise, regelstand:state.regelstand};
 }
 function istGesperrt(){ return !!planMeta && planMeta.status === "fertig"; }
@@ -1885,6 +1939,53 @@ function save(){
 }
 
 /* ---------- Feiertagsliste für Vor-, Plan- und Folgejahr ------------------ */
+/* ---------- Schulferien ---------------------------------------------------
+   Ferientermine der Länder für die Schuljahre 2025/26 bis 2027/28, abgeglichen
+   mit mehreren Ferienkalendern (Stand November 2026, ohne Gewähr). Spätere
+   Jahre und andere Länder lassen sich als eigene Zeiträume eintragen.
+   [Name, erster Ferientag, letzter Ferientag]                              */
+var SCHULFERIEN = {
+  BY: [["Herbstferien","2025-11-03","2025-11-07"], ["Buß- und Bettag","2025-11-19","2025-11-19"], ["Weihnachtsferien","2025-12-22","2026-01-05"],
+       ["Frühjahrsferien","2026-02-16","2026-02-20"], ["Osterferien","2026-03-30","2026-04-10"], ["Pfingstferien","2026-05-26","2026-06-05"],
+       ["Sommerferien","2026-08-03","2026-09-14"], ["Herbstferien","2026-11-02","2026-11-06"], ["Buß- und Bettag","2026-11-18","2026-11-18"],
+       ["Weihnachtsferien","2026-12-24","2027-01-08"], ["Frühjahrsferien","2027-02-08","2027-02-12"], ["Osterferien","2027-03-22","2027-04-02"],
+       ["Pfingstferien","2027-05-18","2027-05-28"], ["Sommerferien","2027-08-02","2027-09-13"], ["Herbstferien","2027-11-02","2027-11-05"],
+       ["Buß- und Bettag","2027-11-17","2027-11-17"], ["Weihnachtsferien","2027-12-24","2028-01-07"], ["Frühjahrsferien","2028-02-28","2028-03-03"],
+       ["Osterferien","2028-04-10","2028-04-21"], ["Pfingstferien","2028-06-06","2028-06-16"], ["Sommerferien","2028-07-31","2028-09-11"]],
+  BE: [["Herbstferien","2025-10-20","2025-11-01"], ["Weihnachtsferien","2025-12-22","2026-01-02"], ["Winterferien","2026-02-02","2026-02-07"],
+       ["Osterferien","2026-03-30","2026-04-10"], ["Sommerferien","2026-07-09","2026-08-22"], ["Herbstferien","2026-10-19","2026-10-31"],
+       ["Weihnachtsferien","2026-12-23","2027-01-02"], ["Winterferien","2027-02-01","2027-02-06"], ["Osterferien","2027-03-22","2027-04-02"],
+       ["Pfingstferien","2027-05-18","2027-05-19"], ["Sommerferien","2027-07-01","2027-08-14"], ["Herbstferien","2027-10-11","2027-10-23"],
+       ["Weihnachtsferien","2027-12-22","2027-12-31"], ["Winterferien","2028-01-31","2028-02-05"], ["Osterferien","2028-04-10","2028-04-22"],
+       ["Sommerferien","2028-07-01","2028-08-12"]],
+  SH: [["Herbstferien","2025-10-20","2025-10-30"], ["Weihnachtsferien","2025-12-19","2026-01-06"], ["Osterferien","2026-03-26","2026-04-10"],
+       ["Sommerferien","2026-07-04","2026-08-15"], ["Herbstferien","2026-10-12","2026-10-24"], ["Weihnachtsferien","2026-12-21","2027-01-06"],
+       ["Osterferien","2027-03-30","2027-04-10"], ["Brückentag","2027-05-07","2027-05-07"], ["Sommerferien","2027-07-03","2027-08-14"],
+       ["Herbstferien","2027-10-11","2027-10-23"], ["Weihnachtsferien","2027-12-23","2028-01-08"], ["Osterferien","2028-04-03","2028-04-15"],
+       ["Brückentag","2028-05-26","2028-05-26"], ["Sommerferien","2028-06-24","2028-08-04"]]
+};
+/* Alle Ferienzeiträume der gewählten Länder im Umfeld des Planungsjahrs */
+function ferienListe(){
+  var von = iso(D(state.year - 1, 7, 1)), bis = iso(D(state.year + 1, 6, 30)), liste = [];
+  (state.regions || []).forEach(function(st){
+    (SCHULFERIEN[st] || []).forEach(function(f){
+      if (f[2] < von || f[1] > bis) return;
+      liste.push({id:st + "-" + f[1], land:st, name:f[0], von:f[1], bis:f[2]});
+    });
+  });
+  (state.ferienExtra || []).forEach(function(f){
+    liste.push({id:f.id, land:"", name:f.name, von:f.von, bis:f.bis, eigen:true});
+  });
+  liste.sort(function(a, b){ return a.von < b.von ? -1 : a.von > b.von ? 1 : a.land < b.land ? -1 : 1; });
+  return liste;
+}
+function ferienTage(f, nurWerktage){
+  var tage = [];
+  for (var d = parseISO(f.von); +d <= +parseISO(f.bis); d = addDays(d, 1)) if (!nurWerktage || dow(d) <= 5) tage.push(iso(d));
+  return tage;
+}
+function ferienText(f){ return f.name + (f.land ? " " + f.land : ""); }
+function ferienAm(d){ return model && model.hol.ferienTag ? model.hol.ferienTag.get(iso(d)) || null : null; }
 function holidayModel(){
   var years = [state.year - 1, state.year, state.year + 1], groups = [];
   var off = new Set(state.holOff), on = new Set(state.holOn);
@@ -1901,7 +2002,16 @@ function holidayModel(){
   });
   var set = new Set();
   groups.forEach(function(g){ g.items.forEach(function(h){ if (h.active) set.add(h.date); }); });
-  return {groups:groups, set:set, regions:regions};
+  /* Schulferien: markiert, und – wenn angehakt – als freie Tage gerechnet */
+  var ferien = ferienListe(), ferienTag = new Map(), frei = new Set(state.ferienFrei || []);
+  if (state.ferienAn) ferien.forEach(function(f){
+    ferienTage(f).forEach(function(k){
+      if (!ferienTag.has(k)) ferienTag.set(k, []);
+      ferienTag.get(k).push(ferienText(f));
+    });
+    if (frei.has(f.id)) ferienTage(f, true).forEach(function(k){ set.add(k); });
+  });
+  return {groups:groups, set:set, regions:regions, ferien:ferien, ferienTag:ferienTag};
 }
 
 /* =========================================================================
@@ -2010,6 +2120,21 @@ function buildModel(){
       }
     });
   });
+  /* Schulferien: welche Termine einer Ausgabe in Ferien liegen (ein Hinweis je Ausgabe) */
+  if (state.ferienAn) issues.forEach(function(is){
+    var drin = [];
+    is.rows.forEach(function(r){
+      var f = model0Ferien(r.date);
+      if (f) drin.push(r);
+    });
+    if (!drin.length) return;
+    findings.push({sev:"info", issue:is.name,
+      t:"In Schulferien: " + drin.length + (drin.length === 1 ? " Termin" : " Termine"),
+      m: drin.map(function(r){
+        return "Schritt " + r.step.nr + " „" + esc(r.step.label) + "“ <b>" + wd(r.date) + " " + fmtShort(r.date) + "</b> (" + esc(model0Ferien(r.date).join(", ")) + ")";
+      }).join("; ") + ". Damit dort kein Termin liegt, die Ferien unter <i>Schulferien</i> anhaken."});
+  });
+  function model0Ferien(d){ return hol.ferienTag.get(iso(d)) || null; }
   /* Arbeitstage: Feiertage ziehen Termine planmäßig vor – ein Hinweis je Ausgabe statt Warnungen */
   if (state.rechenweise !== "excel") issues.forEach(function(is){
     var anders = is.rows.filter(function(r){ return !r.manual && !(r.mit && r.mit.tage) && r.shift; });
@@ -2131,6 +2256,7 @@ function rendernJetzt(withRail){
   var tc = el("taskCount"); tc.textContent = offen; tc.className = "cnt" + (offen ? "" : " zero");
   el("issueCount").textContent = state.issues.length + (state.issues.length === 1 ? " Ausgabe" : " Ausgaben");
   el("holCount").textContent = model.hol.set.size + " Tage";
+  renderFerien();
   sperreAnwenden();
   save();
 }
@@ -2143,7 +2269,7 @@ function sperreAnwenden(){
      Aufgaben bleiben erreichbar. */
   var sel = "#issueList input, #issueList button, #addIssue, #suggestDates," +
             "#regionBar button, #regionBar select, #holidayList input, #holidayList button," +
-            "#holName, #holDate, #addHol, #resetHol," +
+            "#holName, #holDate, #addHol, #resetHol, #ferienAn, #ferName, #ferVon, #ferBis, #addFer," +
             "#ovCard button, #yearInput, #yearMinus, #yearPlus, #resetAll";
   Array.prototype.forEach.call(document.querySelectorAll(sel), function(x){ x.disabled = aus; });
   document.body.classList.toggle("nurlesen", !istAdmin());
@@ -2250,6 +2376,41 @@ function renderHolidays(){
         '</label>';
       }).join("");
   }).join("");
+}
+
+/* ---------- Rail: Schulferien --------------------------------------------- */
+function renderFerien(){
+  var reiter = state.holTab === "ferien" ? "ferien" : "feiertage";
+  el("tabFeiertage").setAttribute("aria-selected", reiter === "feiertage");
+  el("tabFerien").setAttribute("aria-selected", reiter === "ferien");
+  el("paneFeiertage").hidden = reiter !== "feiertage";
+  el("paneFerien").hidden = reiter !== "ferien";
+  var an = !!state.ferienAn, frei = new Set(state.ferienFrei || []);
+  var liste = model.hol.ferien;
+  el("ferStat").textContent = an ? (frei.size ? frei.size + " frei" : "an") : "aus";
+  el("ferStat").className = "ferstat" + (an ? " an" : "");
+  el("ferienAn").setAttribute("aria-pressed", an);
+  var ohne = (state.regions || []).filter(function(st){ return !SCHULFERIEN[st]; });
+  el("ferienHint").innerHTML = (an
+    ? "Ferientage sind im Terminplan und im Kalender schraffiert, die Prüfung nennt Termine in den Ferien. " +
+      "<b>Angehakte Ferien zählen als freie Tage</b> – dort liegt dann kein Termin, die Kette rechnet darum herum."
+    : "Aus: Schulferien spielen für den Plan keine Rolle. Eingeschaltet werden sie markiert, und einzelne Ferien lassen sich als freie Tage rechnen.") +
+    (ohne.length ? ' Für ' + ohne.map(function(st){ return esc(STATES[st]); }).join(", ") + ' sind keine Ferien hinterlegt – bitte als eigene Ferien eintragen.' : "");
+  var jahr = null, html = "";
+  liste.forEach(function(f){
+    var y = f.von.slice(0, 4);
+    if (y !== jahr){ jahr = y; html += '<div class="yeargroup">' + y + (+y === state.year ? " · Planungsjahr" : "") + '</div>'; }
+    var a = parseISO(f.von), b = parseISO(f.bis), ein = +a === +b;
+    html += '<label class="hol fer' + (frei.has(f.id) && an ? " frei" : "") + '">' +
+      '<input type="checkbox" data-fer="' + esc(f.id) + '"' + (frei.has(f.id) ? " checked" : "") + (an && darfPlanAendern() ? "" : " disabled") +
+        ' aria-label="' + esc(ferienText(f)) + ' als freie Tage rechnen">' +
+      '<span class="nm">' + esc(f.name) + '<span class="tag ' + (f.eigen ? "info" : "on") + '">' + (f.eigen ? "eigene" : esc(f.land)) + '</span></span>' +
+      '<span class="dt">' + fmtShort(a).slice(0, 6) + (ein ? "" : "–" + fmtShort(b)) + (ein ? fmtShort(a).slice(6) : "") + '</span>' +
+      (f.eigen && darfPlanAendern() ? '<button type="button" class="x" data-delfer="' + esc(f.id) + '" title="Entfernen">&times;</button>' : "") +
+    '</label>';
+  });
+  el("ferienList").innerHTML = html || '<div class="zleer">Keine Ferien für die gewählten Länder hinterlegt.</div>';
+  el("ferienList").classList.toggle("aus", !an);
 }
 
 /* ---------- Rail: manuelle Termine --------------------------------------- */
@@ -2460,6 +2621,8 @@ function cellHTML(r, issue){
     title = WD_LONG[dow(r.date)-1] + ", KW " + isoWeek(r.date) + "\nZum manuellen Setzen anklicken";
   }
   if (istPhase(r)) title = "Arbeitsphase " + phasenText(r) + "\n" + title;
+  var fer = ferienAm(r.date);
+  if (fer){ cls += " ferien"; title = "Schulferien: " + fer.join(", ") + "\n" + title; }
   return '<td class="'+cls+'" data-issue="'+esc(issue ? issue.id : "")+'" data-step="'+r.step.nr+
     '" title="'+esc(title)+'"><span class="wd">'+wd(r.date)+'</span>'+fmtShort(r.date)+
     (istPhase(r) ? '<span class="von">ab '+wd(r.start)+' '+fmtShort(r.start).slice(0, 6)+'</span>' : "")+'</td>';
@@ -2584,9 +2747,10 @@ function viewCalendar(){
     for (var d = 1; d <= daysIn; d++){
       var dt = D(y, mo, d), k = iso(dt), hits = byDay.get(k) || [];
       var isHol = model.hol.set.has(k), isEtag = hits.some(function(h){ return h.r.step.anchor === 0; });
-      var cls = "day" + (dow(dt) >= 6 ? " we" : "") + (isHol ? " hol" : "") +
+      var fer = model.hol.ferienTag.get(k);
+      var cls = "day" + (dow(dt) >= 6 ? " we" : "") + (isHol ? " hol" : "") + (fer ? " fer" : "") +
                 (hits.length ? " has" : "") + (isEtag ? " etag" : "");
-      var title = (isHol ? "Feiertag / frei" : WD_LONG[dow(dt)-1]) + " " + fmt(dt) +
+      var title = (isHol ? "Feiertag / frei" : WD_LONG[dow(dt)-1]) + " " + fmt(dt) + (fer ? "\nSchulferien: " + fer.join(", ") : "") +
         (hits.length ? "\n" + hits.map(function(h){ return "• " + h.issue.name + ": " + (h.beginn ? "Beginn " : istPhase(h.r) ? "Ende " : "") + h.r.step.label; }).join("\n") : "");
       var dots = hits.slice(0,4).map(function(h){ return '<i style="--ph:'+phaseOf(h.r.step).css+'"></i>'; }).join("");
       cells += '<span class="'+cls+'" title="'+esc(title)+'">'+d+'<span class="dots">'+dots+'</span></span>';
@@ -2596,7 +2760,8 @@ function viewCalendar(){
   var legend = '<div class="callegend">'+
     PHASES.map(function(p){ return '<span><i style="background:'+p.css+'"></i>'+esc(p.label)+'</span>'; }).join("")+
     '<span><i style="background:var(--milestone)"></i>Versand Print</span>'+
-    '<span><i style="background:var(--crit-soft);border:1px solid var(--crit)"></i>Feiertag / frei</span></div>';
+    '<span><i style="background:var(--crit-soft);border:1px solid var(--crit)"></i>Feiertag / frei</span>'+
+    (state.ferienAn ? '<span><i class="ferlegende"></i>Schulferien</span>' : "")+'</div>';
   return card("Kalender " + fmt(min) + " – " + fmt(max), '<div class="calgrid">'+grid+'</div>'+legend);
 }
 
@@ -3501,6 +3666,42 @@ el("holidayList").addEventListener("click", function(e){
   var id = e.target.dataset.delhol;
   if (!id) return;
   state.holExtra = state.holExtra.filter(function(x){ return x.id !== id; });
+  render();
+});
+/* Rail: Reiter Feiertage / Schulferien */
+document.querySelector(".kartentabs").addEventListener("click", function(e){
+  var b = e.target.closest("[data-holtab]");
+  if (!b) return;
+  state.holTab = b.dataset.holtab;
+  renderFerien();
+});
+el("ferienAn").addEventListener("click", function(){
+  state.ferienAn = !state.ferienAn;
+  render();
+  toast(state.ferienAn ? "Schulferien werden berücksichtigt" : "Schulferien spielen keine Rolle mehr");
+});
+el("ferienList").addEventListener("change", function(e){
+  var id = e.target.dataset.fer;
+  if (!id) return;
+  var s = new Set(state.ferienFrei || []);
+  e.target.checked ? s.add(id) : s.delete(id);
+  state.ferienFrei = Array.from(s);
+  render();
+});
+el("ferienList").addEventListener("click", function(e){
+  var id = e.target.dataset.delfer;
+  if (!id) return;
+  e.preventDefault();
+  state.ferienExtra = (state.ferienExtra || []).filter(function(x){ return x.id !== id; });
+  state.ferienFrei = (state.ferienFrei || []).filter(function(x){ return x !== id; });
+  render();
+});
+el("addFer").addEventListener("click", function(){
+  var n = el("ferName").value.trim(), a = el("ferVon").value, b = el("ferBis").value || a;
+  if (!a){ toast("Bitte den ersten Ferientag wählen"); return; }
+  if (b < a){ var t = a; a = b; b = t; }
+  state.ferienExtra = (state.ferienExtra || []).concat([{id:"f"+Date.now(), name:n || "Ferien", von:a, bis:b}]);
+  el("ferName").value = ""; el("ferVon").value = ""; el("ferBis").value = "";
   render();
 });
 el("addHol").addEventListener("click", function(){

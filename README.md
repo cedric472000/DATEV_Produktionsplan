@@ -164,6 +164,23 @@ die Werktage von der Woche mit Heiligabend bis Silvester. Jeder Tag lässt
 sich einzeln abschalten. Eigene freie Tage (Betriebsferien) kommen über das
 Feld unter der Liste dazu.
 
+## Schulferien
+
+Die Karte *Freie Tage* hat zwei Reiter: **Feiertage** und **Schulferien**.
+Im Reiter Schulferien schaltet der Knopf *Schulferien berücksichtigen* die
+Ferien der gewählten Länder ein:
+
+- Ferientage sind im Terminplan und im Kalender schraffiert.
+- Die Prüfung nennt je Ausgabe die Termine, die in Ferien liegen.
+- Angehakte Ferien zählen als **freie Tage**. Dort liegt dann kein Termin,
+  und die Kette rechnet darum herum. Fällt dadurch zu viel Zeit zwischen
+  Textabgabe und Versand weg, rückt die Textabgabe vor.
+
+Hinterlegt sind die Ferien in Bayern, Berlin und Schleswig-Holstein für die
+Schuljahre 2025/26 bis 2027/28 (Stand November 2026, ohne Gewähr). Spätere
+Jahre, andere Länder oder Betriebsurlaub lassen sich als **eigene Ferien**
+mit erstem und letztem Tag eintragen.
+
 ## Prüfungen
 
 Der Reiter **Prüfung** meldet:
