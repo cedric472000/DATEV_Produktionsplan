@@ -156,6 +156,13 @@ Textabgabe eine Woche früher gesetzt, rücken Grafikplanung, Konsolidierung,
 Konferenz, Printplanung und Kick-off eine Woche vor, und die Bearbeitung
 bekommt die gewonnene Zeit.
 
+**Einfärben:** Im selben Fenster lässt sich jeder Termin mit einer von acht
+Farben hinterlegen (Rot, Orange, Gelb, Grün, Türkis, Blau, Violett, Grau),
+etwa um Zuständigkeiten oder offene Punkte zu markieren. Das erste Feld
+entfernt die Farbe. Wer nur die Farbe ändert, lässt das Datum unverändert.
+Die Farben erscheinen im Terminplan, in der Ausgaben-Ansicht und in der
+Excel-Datei (Blatt *Produktionsplan*). Sie werden mit dem Plan gespeichert.
+
 ## Feiertage
 
 Voreingestellt sind die gesetzlichen Feiertage in **Bayern, Berlin und

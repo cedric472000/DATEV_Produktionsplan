@@ -23,6 +23,7 @@
   --ph-1:#0A7FA6; --ph-2:#B0216A; --ph-3:#9C7000; --ph-4:#39424B;
   --shadow:0 18px 40px -24px rgba(10,20,30,.45);
   --r:2px;
+  --mark-1:#F6D3CE; --mark-2:#FADDBF; --mark-3:#F5E9A3; --mark-4:#D3EBC8; --mark-5:#C9E9E6; --mark-6:#D0DFF6; --mark-7:#E2D5F2; --mark-8:#DDE2E6;
   --sans:"Schibsted Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --display:"Bricolage Grotesque", "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
   --mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
@@ -40,6 +41,7 @@
     --crit:#F0918A; --crit-soft:#331A17;
     --ph-1:#4DBDE0; --ph-2:#EC79B0; --ph-3:#E0B547; --ph-4:#9AA7B3;
     --shadow:0 18px 40px -24px rgba(0,0,0,.9);
+    --mark-1:#4D2521; --mark-2:#4B3319; --mark-3:#474016; --mark-4:#24412B; --mark-5:#1B403D; --mark-6:#1F3352; --mark-7:#37294D; --mark-8:#30373D;
     color-scheme:dark;
   }
 }
@@ -55,6 +57,7 @@
   --crit:#F0918A; --crit-soft:#331A17;
   --ph-1:#4DBDE0; --ph-2:#EC79B0; --ph-3:#E0B547; --ph-4:#9AA7B3;
   --shadow:0 18px 40px -24px rgba(0,0,0,.9);
+  --mark-1:#4D2521; --mark-2:#4B3319; --mark-3:#474016; --mark-4:#24412B; --mark-5:#1B403D; --mark-6:#1F3352; --mark-7:#37294D; --mark-8:#30373D;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -702,6 +705,20 @@ td.cell.ferien,.day.fer,.ferlegende{background-image:repeating-linear-gradient(1
 .empty strong.neutral{color:var(--ink-2)}
 @media (max-width:600px){.finding{grid-template-columns:auto minmax(0,1fr)}.finding .btn{grid-column:2}}
 nav.tabs .cnt.leise{background:var(--mast-2);color:var(--mast-ink)}
+
+/* ---------- eingefärbte Termine ---------- */
+td.cell.farbe,table.plan tbody tr td.cell.farbe,tr.milestone td.cell.farbe{background:var(--fb) !important;color:var(--ink)}
+tr.milestone td.cell.farbe .wd{color:var(--ink-3)}
+table.plan tbody tr:hover td.cell.farbe{background:color-mix(in srgb,var(--fb) 80%,var(--ink) 8%) !important}
+td.cell.farbe.shifted::after{background:var(--ink-3)}
+.tl.farbe{background:var(--fb)}
+.dlg .farbwahl{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px}
+.dlg .flbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);font-weight:500}
+.dlg .swatches{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:5px}
+.dlg .sw{aspect-ratio:1;max-width:100%;border:1px solid var(--line-2);background:var(--fb);cursor:pointer;padding:0;border-radius:1px;position:relative}
+.dlg .sw:hover{border-color:var(--ink)}
+.dlg .sw[aria-checked="true"]{outline:2px solid var(--ink);outline-offset:1px}
+.dlg .sw.keine{background:linear-gradient(135deg,transparent 46%,var(--crit) 46% 54%,transparent 54%),var(--surface)}
 </style>
 
 <header class="topbar">
@@ -1407,6 +1424,7 @@ function defaultState(year){
     ferienFrei: [],  /* Ferien, die als freie Tage zählen (ids) */
     ferienExtra: [], /* eigene Ferienzeiträume {id,name,von,bis} */
     geprueft: {},    /* abgehakte Befunde der Prüfung: Schlüssel -> Datum */
+    farben: {},      /* eingefärbte Termine: "<Ausgaben-Id>:<Schritt-Nr>" -> 1…8 */
     overrides: {},   /* manuelle Termine, Schlüssel "<Ausgaben-Id>:<Schritt-Nr>" */
     rechenweise: "arbeitstage",
     regelstand: REGELSTAND,       /* Stand der gelernten Regeln in state.steps */
@@ -1419,7 +1437,7 @@ function defaultState(year){
 function normState(raw, year){
   var s = raw && typeof raw === "object" ? raw : {};
   var d = defaultState(year || s.year || 2027);
-  ["year","issues","steps","regions","holOff","holOn","holExtra","ferienAn","ferienFrei","ferienExtra","geprueft","overrides","view","orientation","selected","rechenweise","regelstand"]
+  ["year","issues","steps","regions","holOff","holOn","holExtra","ferienAn","ferienFrei","ferienExtra","geprueft","farben","overrides","view","orientation","selected","rechenweise","regelstand"]
     .forEach(function(k){ if (s[k] !== undefined && s[k] !== null) d[k] = s[k]; });
   if (!d.overrides || typeof d.overrides !== "object") d.overrides = {};
   if (!Array.isArray(d.regions)) d.regions = STANDARD_LAENDER.slice();
@@ -1453,7 +1471,7 @@ function normState(raw, year){
 function planInhalt(){
   return {year:state.year, issues:state.issues, steps:state.steps, regions:state.regions,
           holOff:state.holOff, holOn:state.holOn, holExtra:state.holExtra,
-          ferienAn:!!state.ferienAn, ferienFrei:state.ferienFrei || [], ferienExtra:state.ferienExtra || [], geprueft:state.geprueft || {}, overrides:state.overrides,
+          ferienAn:!!state.ferienAn, ferienFrei:state.ferienFrei || [], ferienExtra:state.ferienExtra || [], geprueft:state.geprueft || {}, farben:state.farben || {}, overrides:state.overrides,
           orientation:state.orientation, rechenweise:state.rechenweise, regelstand:state.regelstand};
 }
 function istGesperrt(){ return !!planMeta && planMeta.status === "fertig"; }
@@ -2511,18 +2529,27 @@ function openPop(issueId, stepNr){
   if (!x) return;
   var r = x.byNr.get(stepNr), auto = x.autoByNr.get(stepNr);
   if (!r) return;
-  var key = x.id + ":" + stepNr, feld = iso(r.date);
+  var key = x.id + ":" + stepNr, feld = iso(r.date), farbe = farbeVon(x.id, stepNr), farbeAlt = farbe;
   var aktionen = [{k:"ok", label:"Übernehmen", art:"primary"}];
   if (r.manual) aktionen.push({k:"auto", label:"Automatik"});
   aktionen.push({k:"ab", label:"Abbrechen", art:"ghost"});
 
   Dialog._ok = function(k){
-    if (k === "auto"){ delete state.overrides[key]; render(); toast("Wieder automatisch"); return; }
+    var farbeNeu = farbe !== farbeAlt;
+    function farbeSetzen(){
+      var fa = Object.assign({}, state.farben || {});
+      if (farbe) fa[key] = farbe; else delete fa[key];
+      state.farben = fa;
+    }
+    if (k === "auto"){ delete state.overrides[key]; farbeSetzen(); render(); toast("Wieder automatisch"); return; }
     if (k !== "ok") return;
     if (!feld){ toast("Bitte ein Datum wählen"); return; }
+    var datumNeu = feld !== iso(r.date);
     if (auto && iso(auto.date) === feld) delete state.overrides[key];
     else state.overrides[key] = feld;
+    farbeSetzen();
     render();
+    if (farbeNeu && !datumNeu){ toast(farbe ? "Eingefärbt: " + FARBEN[farbe-1].name : "Farbe entfernt"); return; }
     var y = model.issues.filter(function(i){ return i.id === issueId; })[0];
     var n = y ? y.rows.filter(function(q){ return q.mit && q.mit.von === stepNr && q.mit.tage; }).length : 0;
     toast(n ? "Termin gesetzt – " + n + (n === 1 ? " Schritt wandert" : " Schritte wandern") + " im gleichen Abstand mit" : "Termin gesetzt");
@@ -2535,7 +2562,14 @@ function openPop(issueId, stepNr){
       (r.step.wd ? ' · Ziel-Wochentag '+WD_LONG[r.step.wd-1] : ' · flexibler Arbeitstag')+
       (istPhase(r) ? '<br>Arbeitsphase ab '+wd(r.start)+' '+fmt(r.start)+' – das Datum hier ist ihr letzter Tag.' : '')+'</div>'+
     '<div class="folge" id="dlgFolge"></div>'+
-    '<div class="warnline" id="dlgWarn"></div>',
+    '<div class="warnline" id="dlgWarn"></div>'+
+    '<div class="farbwahl"><span class="flbl" id="dlgFarbLbl">Farbe</span>'+
+      '<div class="swatches" role="radiogroup" aria-labelledby="dlgFarbLbl">'+
+      '<button type="button" class="sw keine" role="radio" data-farbe="0" aria-checked="'+(!farbe)+'" title="Keine Farbe" aria-label="Keine Farbe"></button>'+
+      FARBEN.map(function(f){
+        return '<button type="button" class="sw" role="radio" data-farbe="'+f.n+'" style="--fb:var(--mark-'+f.n+')" aria-checked="'+(farbe === f.n)+
+               '" title="'+f.name+'" aria-label="'+f.name+'"></button>';
+      }).join("")+'</div></div>',
     aktionen,
     function(d){
       var i = d.querySelector("#dlgDatum"), w = d.querySelector("#dlgWarn"), fo = d.querySelector("#dlgFolge");
@@ -2558,6 +2592,12 @@ function openPop(issueId, stepNr){
         w.textContent = msg.length ? "Hinweis: " + msg.join(", ") + "." : "";
       }
       i.addEventListener("input", pruefe);
+      d.querySelector(".swatches").addEventListener("click", function(e){
+        var s = e.target.closest("[data-farbe]");
+        if (!s) return;
+        farbe = +s.dataset.farbe;
+        Array.prototype.forEach.call(d.querySelectorAll(".sw"), function(x){ x.setAttribute("aria-checked", +x.dataset.farbe === farbe); });
+      });
       pruefe(); i.focus();
     });
 }
@@ -2601,6 +2641,17 @@ function renderPanel(){
 }
 
 /* ---------- Ansicht: Terminplan ------------------------------------------ */
+/* Acht Farben zum Einfärben einzelner Termine (im Fenster beim Klick auf
+   einen Termin). Hex-Werte für die Excel-Datei; auf der Seite gelten die
+   Tokens --mark-1 … --mark-8, die es für hell und dunkel gibt. */
+var FARBEN = [
+  {n:1, name:"Rot",     hex:"F6D3CE"}, {n:2, name:"Orange",  hex:"FADDBF"},
+  {n:3, name:"Gelb",    hex:"F5E9A3"}, {n:4, name:"Grün",    hex:"D3EBC8"},
+  {n:5, name:"Türkis",  hex:"C9E9E6"}, {n:6, name:"Blau",    hex:"D0DFF6"},
+  {n:7, name:"Violett", hex:"E2D5F2"}, {n:8, name:"Grau",    hex:"DDE2E6"}
+];
+function farbeVon(issueId, nr){ var f = state.farben && state.farben[issueId + ":" + nr]; return f >= 1 && f <= 8 ? f : 0; }
+
 /* Arbeitsphase: Beginn, wenn er vor dem Termin liegt */
 function istPhase(r){ return r.start && +r.start !== +r.date; }
 function phasenText(r){
@@ -2628,7 +2679,9 @@ function cellHTML(r, issue){
   if (istPhase(r)) title = "Arbeitsphase " + phasenText(r) + "\n" + title;
   var fer = ferienAm(r.date);
   if (fer){ cls += " ferien"; title = "Schulferien: " + fer.join(", ") + "\n" + title; }
-  return '<td class="'+cls+'" data-issue="'+esc(issue ? issue.id : "")+'" data-step="'+r.step.nr+
+  var fb = issue ? farbeVon(issue.id, r.step.nr) : 0;
+  if (fb){ cls += " farbe"; title = "Farbe: " + FARBEN[fb-1].name + "\n" + title; }
+  return '<td class="'+cls+'"'+(fb ? ' style="--fb:var(--mark-'+fb+')"' : "")+' data-issue="'+esc(issue ? issue.id : "")+'" data-step="'+r.step.nr+
     '" title="'+esc(title)+'"><span class="wd">'+wd(r.date)+'</span>'+fmtShort(r.date)+
     (istPhase(r) ? '<span class="von">ab '+wd(r.start)+' '+fmtShort(r.start).slice(0, 6)+'</span>' : "")+'</td>';
 }
@@ -2701,8 +2754,9 @@ function viewIssue(){
       : mit ? '<span class="mitnote">Wandert mit Schritt '+mit.von+(von ? ' „'+esc(von.step.label)+'“' : "")+' · '+arbeitstageText(mit.tage)+
               (auto ? ' · automatisch '+fmt(auto.date) : "")+'</span>'
       : (r.shift ? '<span class="shift">'+(state.rechenweise === "excel" ? "Basis " : "Ohne Feiertage ")+fmt(r.basis)+' → verschoben auf '+WD_LONG[dow(r.date)-1]+' ('+(r.shift>0?"+":"")+r.shift+' Tage)</span>' : "");
-    out += '<div class="tl click'+(r.step.anchor === 0 ? " ms" : "")+(r.manual ? " manual" : "")+(mit ? " mit" : "")+
-      '" style="--ph:'+ph.css+'" data-issue="'+esc(x.id)+'" data-step="'+r.step.nr+'" title="Zum Setzen eines eigenen Termins anklicken">'+
+    var fbt = farbeVon(x.id, r.step.nr);
+    out += '<div class="tl click'+(r.step.anchor === 0 ? " ms" : "")+(r.manual ? " manual" : "")+(mit ? " mit" : "")+(fbt ? " farbe" : "")+
+      '" style="--ph:'+ph.css+(fbt ? ';--fb:var(--mark-'+fbt+')' : "")+'" data-issue="'+esc(x.id)+'" data-step="'+r.step.nr+'" title="Zum Setzen eines eigenen Termins anklicken">'+
       '<span class="d"><span class="wd">'+wd(r.date)+'</span>'+fmt(r.date)+
         (istPhase(r) ? '<span class="von">ab '+wd(r.start)+' '+fmt(r.start)+' · '+r.tage+' AT</span>' : "")+'</span>'+
       '<span class="kw">KW&nbsp;'+isoWeek(r.date)+'</span>'+
@@ -3177,7 +3231,8 @@ var Xlsx = (function(){
                datumBlau:{c:"2F5597"}, lila:{c:"7030A0"}, titelHell:{b:1, sz:14, c:"0070C0"},
                anzKopf:{b:1, sz:9, c:"2E75B6"}, dunkelFett:{b:1, c:"1F2937"}, dunkel:{c:"1F2937"}};
   var FILLS = {keine:null, raster:null, marke:"14181D", manuell:"DFEFF5", etag:"E4E9EC", phase:"EDF0F2",
-               verschoben:"FAEBD3", grau:"F2F2F2", orange:"FFC000", gruenHell:"E4E9EC"};
+               verschoben:"FAEBD3", grau:"F2F2F2", orange:"FFC000", gruenHell:"E4E9EC",
+               f1:"F6D3CE", f2:"FADDBF", f3:"F5E9A3", f4:"D3EBC8", f5:"C9E9E6", f6:"D0DFF6", f7:"E2D5F2", f8:"DDE2E6"};
   var BORDERS = {keine:null, hell:["D3DBE6", "left right top bottom"], schwarz:["000000", "left right top bottom"],
                  linie:["D9D9D9", "bottom"]};
   var FORMATE = {standard:0, zahl:1, tagKurz:164, datum:165, datumLang:166};
@@ -3220,6 +3275,12 @@ var Xlsx = (function(){
     ["anzDat",        "datum",     "dunkel",    "keine",     "linie",   LINKS],
     ["anzDatMan",     "datum",     "dunkel",    "orange",    "linie",   LINKS]
   ];
+  for (var fi = 1; fi <= 8; fi++){
+    VORLAGEN.push(["datF" + fi, "tagKurz", "normal", "f" + fi, "hell", LINKS]);
+    VORLAGEN.push(["datManF" + fi, "tagKurz", "blauFett", "f" + fi, "hell", LINKS]);
+    VORLAGEN.push(["rngF" + fi, "standard", "normal", "f" + fi, "hell", LINKS]);
+    VORLAGEN.push(["rngManF" + fi, "standard", "blauFett", "f" + fi, "hell", LINKS]);
+  }
   function index(o){ var m = {}; Object.keys(o).forEach(function(k, i){ m[k] = i; }); return m; }
   var FI = index(FONTS), LI = index(FILLS), BI = index(BORDERS), S = {};
   VORLAGEN.forEach(function(v, i){ S[v[0]] = i; });
@@ -3352,8 +3413,9 @@ function excelMappe(){
     plan.push([{v:st.nr, s:S.zahl}, {v:st.label, s:anker ? S.txtE : S.txt}, {v:dauer, s:S.txt}].concat(is.map(function(x){
       var r = x.byNr.get(st.nr);
       if (!r) return {v:"", s:S.txt};
-      if (istPhase(r)) return {v:phasenZelle(r), s: r.manual ? S.rngMan : r.shift ? S.rngVer : S.rng};
-      return {v:r.date, s: r.manual ? S.datMan : anker ? S.datE : r.shift ? S.datVer : S.dat};
+      var fb = farbeVon(x.id, st.nr);
+      if (istPhase(r)) return {v:phasenZelle(r), s: fb ? S[(r.manual ? "rngManF" : "rngF") + fb] : r.manual ? S.rngMan : r.shift ? S.rngVer : S.rng};
+      return {v:r.date, s: fb ? S[(r.manual ? "datManF" : "datF") + fb] : r.manual ? S.datMan : anker ? S.datE : r.shift ? S.datVer : S.dat};
     })));
   });
 
@@ -3649,6 +3711,9 @@ el("issueList").addEventListener("click", function(e){
   var goneId = state.issues[i].id;
   Object.keys(state.overrides).forEach(function(k){
     if (k.indexOf(goneId + ":") === 0) delete state.overrides[k];
+  });
+  Object.keys(state.farben || {}).forEach(function(k){
+    if (k.indexOf(goneId + ":") === 0) delete state.farben[k];
   });
   state.issues.splice(i, 1);
   if (state.selected >= state.issues.length) state.selected = Math.max(0, state.issues.length - 1);
