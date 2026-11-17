@@ -191,6 +191,14 @@ Der Reiter **Prüfung** meldet:
 - Termine zwischen den Jahren;
 - Abweichungen vom Normalraster wegen Feiertagen (ein Hinweis je Ausgabe).
 
+Die Prüfung hat zwei Reiter: **Offen** und **Geprüft**. Mit *✓ Geprüft* hakt
+man einen Eintrag ab, er wandert mit Datum nach *Geprüft*. *Wieder öffnen*
+holt ihn zurück, beide Reiter haben auch einen Knopf für alle Einträge auf
+einmal. Ändert sich ein Befund, weil sich Termine verschoben haben, ist er
+wieder offen. Die Zahl am Reiter *Prüfung* zählt nur offene Einträge. Sie
+ist gelb, solange darunter mehr als reine Hinweise sind. Abhaken dürfen
+Admins, der Stand wird mit dem Plan gespeichert.
+
 ## Export
 
 - **Excel** mit zwei Blättern:

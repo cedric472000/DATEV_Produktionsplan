@@ -683,6 +683,25 @@ td.cell.manual{background:var(--accent-soft);color:var(--accent)}
 /* Ferientage im Plan und im Kalender: feine Schraffur im Gelb der Phasenleiste */
 td.cell.ferien,.day.fer,.ferlegende{background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--ph-3) 30%,transparent) 0 2px,transparent 2px 6px)}
 .ferlegende{display:inline-block;width:9px;height:9px;border:1px solid var(--ph-3)}
+
+/* ---------- Prüfung: Offen / Geprüft ---------- */
+.pruefreiter{display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--line);padding:0 15px;flex-wrap:wrap}
+.pruefreiter button[role=tab]{background:none;border:0;border-bottom:3px solid transparent;padding:11px 14px 9px;cursor:pointer;
+  font:inherit;font-size:13.5px;font-weight:600;color:var(--ink-3);display:flex;align-items:center;gap:8px}
+.pruefreiter button[role=tab]:hover{color:var(--ink)}
+.pruefreiter button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.pruefreiter .pz{font-family:var(--mono);font-size:10.5px;font-weight:500;background:var(--surface-3);color:var(--ink-2);padding:1px 6px;border-radius:1px}
+.pruefreiter button[aria-selected="true"] .pz{background:var(--ink);color:var(--surface)}
+.pruefreiter .spacer{flex:1}
+.pruefreiter .btn{align-self:center;margin:6px 0}
+.finding{grid-template-columns:auto minmax(0,1fr) auto}
+.finding .haken{align-self:start}
+.finding.erledigt .t,.finding.erledigt .m{color:var(--ink-3)}
+.finding.erledigt .sev{opacity:.55}
+.finding .gam{font-family:var(--mono);font-size:10.5px;color:var(--ok);margin-top:4px}
+.empty strong.neutral{color:var(--ink-2)}
+@media (max-width:600px){.finding{grid-template-columns:auto minmax(0,1fr)}.finding .btn{grid-column:2}}
+nav.tabs .cnt.leise{background:var(--mast-2);color:var(--mast-ink)}
 </style>
 
 <header class="topbar">
@@ -1387,6 +1406,7 @@ function defaultState(year){
     ferienAn: false, /* Schulferien berücksichtigen */
     ferienFrei: [],  /* Ferien, die als freie Tage zählen (ids) */
     ferienExtra: [], /* eigene Ferienzeiträume {id,name,von,bis} */
+    geprueft: {},    /* abgehakte Befunde der Prüfung: Schlüssel -> Datum */
     overrides: {},   /* manuelle Termine, Schlüssel "<Ausgaben-Id>:<Schritt-Nr>" */
     rechenweise: "arbeitstage",
     regelstand: REGELSTAND,       /* Stand der gelernten Regeln in state.steps */
@@ -1399,7 +1419,7 @@ function defaultState(year){
 function normState(raw, year){
   var s = raw && typeof raw === "object" ? raw : {};
   var d = defaultState(year || s.year || 2027);
-  ["year","issues","steps","regions","holOff","holOn","holExtra","ferienAn","ferienFrei","ferienExtra","overrides","view","orientation","selected","rechenweise","regelstand"]
+  ["year","issues","steps","regions","holOff","holOn","holExtra","ferienAn","ferienFrei","ferienExtra","geprueft","overrides","view","orientation","selected","rechenweise","regelstand"]
     .forEach(function(k){ if (s[k] !== undefined && s[k] !== null) d[k] = s[k]; });
   if (!d.overrides || typeof d.overrides !== "object") d.overrides = {};
   if (!Array.isArray(d.regions)) d.regions = STANDARD_LAENDER.slice();
@@ -1433,7 +1453,7 @@ function normState(raw, year){
 function planInhalt(){
   return {year:state.year, issues:state.issues, steps:state.steps, regions:state.regions,
           holOff:state.holOff, holOn:state.holOn, holExtra:state.holExtra,
-          ferienAn:!!state.ferienAn, ferienFrei:state.ferienFrei || [], ferienExtra:state.ferienExtra || [], overrides:state.overrides,
+          ferienAn:!!state.ferienAn, ferienFrei:state.ferienFrei || [], ferienExtra:state.ferienExtra || [], geprueft:state.geprueft || {}, overrides:state.overrides,
           orientation:state.orientation, rechenweise:state.rechenweise, regelstand:state.regelstand};
 }
 function istGesperrt(){ return !!planMeta && planMeta.status === "fertig"; }
@@ -2234,8 +2254,9 @@ function rendernJetzt(withRail){
   renderPlanCard();
   renderMeta();
   renderPanel();
-  var n = model.findings.filter(function(f){ return f.sev !== "info"; }).length;
-  var c = el("warnCount"); c.textContent = n; c.className = "cnt" + (n ? "" : " zero");
+  /* Zahl am Reiter: alle offenen Einträge; gelb, solange etwas zu prüfen ist, das kein reiner Hinweis ist */
+  var offenB = offeneBefunde(), n = offenB.length, ernst = offenB.some(function(f){ return f.sev !== "info"; });
+  var c = el("warnCount"); c.textContent = n; c.className = "cnt" + (n ? (ernst ? "" : " leise") : " zero");
   var offen = aufgaben.filter(function(t){ return !erledigt(t); }).length;
   var tc = el("taskCount"); tc.textContent = offen; tc.className = "cnt" + (offen ? "" : " zero");
   el("issueCount").textContent = state.issues.length + (state.issues.length === 1 ? " Ausgabe" : " Ausgaben");
@@ -2547,7 +2568,7 @@ function renderMeta(){
   if (!is.length){ el("metabar").innerHTML = '<div class="m"><span class="k">Keine Ausgaben</span><span class="v">–</span></div>'; return; }
   var first = new Date(Math.min.apply(null, is.map(function(x){ return +x.first; })));
   var last  = new Date(Math.max.apply(null, is.map(function(x){ return +x.last; })));
-  var warn  = model.findings.filter(function(f){ return f.sev !== "info"; }).length;
+  var warn  = offeneBefunde().filter(function(f){ return f.sev !== "info"; }).length;
   var runs  = is.map(function(x){ return diffDays(x.first, x.etag); });
   var avg   = Math.round(runs.reduce(function(a,b){ return a+b; }, 0) / runs.length);
   el("metabar").innerHTML = [
@@ -2750,16 +2771,44 @@ function viewCalendar(){
 }
 
 /* ---------- Ansicht: Prüfung --------------------------------------------- */
+/* Prüfung: Befunde lassen sich nach und nach als geprüft abhaken. Der
+   Schlüssel hängt am Inhalt – ändert sich ein Befund (andere Termine), ist
+   er wieder offen. */
+function befundKey(f){
+  if (f.key) return f.key;
+  var s = f.sev + "|" + (f.issue || "") + "|" + f.t + "|" + String(f.m).replace(/<[^>]+>/g, ""), h = 5381;
+  for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (f.key = "b" + (h >>> 0).toString(36));
+}
+function istGeprueft(f){ return !!(state.geprueft && state.geprueft[befundKey(f)]); }
+function offeneBefunde(){ return model.findings.filter(function(f){ return !istGeprueft(f); }); }
 function viewFindings(){
   var f = model.findings;
   if (!f.length) return card("Prüfung", '<div class="empty"><strong>Ohne Befund</strong>Alle Termine liegen auf Arbeitstagen, halten ihre Ziel-Wochentage ein und stehen in gültiger Reihenfolge.</div>');
-  var body = '<div class="findings">'+f.map(function(x){
+  var offen = f.filter(function(x){ return !istGeprueft(x); }), erledigt = f.filter(istGeprueft);
+  var reiter = state.pruefTab === "geprueft" ? "geprueft" : "offen";
+  var liste = reiter === "offen" ? offen : erledigt, darf = istAdmin();
+  var tabs = '<div class="pruefreiter" role="tablist" aria-label="Prüfung">'+
+    '<button type="button" role="tab" data-act="pruefTab" data-v="offen" aria-selected="'+(reiter === "offen")+'">Offen<span class="pz">'+offen.length+'</span></button>'+
+    '<button type="button" role="tab" data-act="pruefTab" data-v="geprueft" aria-selected="'+(reiter === "geprueft")+'">Geprüft<span class="pz">'+erledigt.length+'</span></button>'+
+    '<span class="spacer"></span>'+
+    (darf && liste.length > 1 ? '<button type="button" class="btn sm" data-act="'+(reiter === "offen" ? "alleGeprueft" : "alleOffen")+'">'+
+      (reiter === "offen" ? "Alle als geprüft markieren" : "Alle wieder öffnen")+'</button>' : "")+'</div>';
+  var leer = reiter === "offen"
+    ? '<div class="empty"><strong>Alles geprüft</strong>Alle '+f.length+' Einträge sind abgehakt. Ändert sich ein Termin, taucht der Eintrag hier wieder auf.</div>'
+    : '<div class="empty"><strong class="neutral">Noch nichts geprüft</strong>Unter „Offen“ einen Eintrag mit „Geprüft“ abhaken – er landet dann hier.</div>';
+  var body = liste.length ? '<div class="findings">'+liste.map(function(x){
     var label = x.sev === "crit" ? "Fehler" : x.sev === "warn" ? "Prüfen" : "Hinweis";
-    return '<div class="finding"><span class="sev '+x.sev+'">'+label+'</span><div>'+
+    var g = state.geprueft && state.geprueft[befundKey(x)];
+    var knopf = !darf ? "" : reiter === "offen"
+      ? '<button type="button" class="btn sm haken" data-act="geprueft" data-v="'+befundKey(x)+'">✓ Geprüft</button>'
+      : '<button type="button" class="btn sm ghost" data-act="oeffnen" data-v="'+befundKey(x)+'">Wieder öffnen</button>';
+    return '<div class="finding'+(reiter === "geprueft" ? " erledigt" : "")+'"><span class="sev '+x.sev+'">'+label+'</span><div>'+
       '<div class="t">'+esc(x.t)+(x.issue ? ' <span class="tag">'+esc(x.issue)+'</span>' : "")+'</div>'+
-      '<div class="m">'+x.m+'</div></div></div>';
-  }).join("")+'</div>';
-  return card("Prüfung · " + f.length + (f.length === 1 ? " Eintrag" : " Einträge"), body);
+      '<div class="m">'+x.m+'</div>'+
+      (g ? '<div class="gam">Geprüft am '+fmt(parseISO(g))+'</div>' : "")+'</div>'+knopf+'</div>';
+  }).join("")+'</div>' : leer;
+  return card("Prüfung · " + offen.length + " offen, " + erledigt.length + " geprüft", tabs + body);
 }
 
 /* ---------- Ansicht: Regelwerk ------------------------------------------- */
@@ -3894,6 +3943,18 @@ el("panel").addEventListener("click", function(e){
   if (!b) return;
   var a = b.dataset.act;
   if (a === "orient"){ state.orientation = b.dataset.v; renderPanel(); save(); }
+  else if (a === "pruefTab"){ state.pruefTab = b.dataset.v; renderPanel(); }
+  else if (a === "geprueft" || a === "oeffnen" || a === "alleGeprueft" || a === "alleOffen"){
+    if (!istAdmin()) return;
+    var g = Object.assign({}, state.geprueft || {}), heute0 = iso(heute());
+    var keys = a === "geprueft" || a === "oeffnen" ? [b.dataset.v]
+      : model.findings.filter(function(x){ return a === "alleGeprueft" ? !istGeprueft(x) : istGeprueft(x); }).map(befundKey);
+    keys.forEach(function(k){ if (a === "geprueft" || a === "alleGeprueft") g[k] = heute0; else delete g[k]; });
+    state.geprueft = g;
+    render();
+    toast(a === "geprueft" ? "Als geprüft abgehakt" : a === "oeffnen" ? "Wieder offen"
+          : keys.length + (a === "alleGeprueft" ? " Einträge als geprüft abgehakt" : " Einträge wieder offen"));
+  }
   else if (a === "fmt"){ exportFormat = b.dataset.v; renderPanel(); }
   else if (a === "rechenweise"){
     if (!darfPlanAendern() || state.rechenweise === b.dataset.v) return;
