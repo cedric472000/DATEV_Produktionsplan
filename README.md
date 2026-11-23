@@ -163,6 +163,19 @@ entfernt die Farbe. Wer nur die Farbe ändert, lässt das Datum unverändert.
 Die Farben erscheinen im Terminplan, in der Ausgaben-Ansicht und in der
 Excel-Datei (Blatt *Produktionsplan*). Sie werden mit dem Plan gespeichert.
 
+**Ganze Zeilen einfärben:** Ein Klick auf den Namen eines Schritts vorne im
+Terminplan öffnet dieselbe Farbauswahl für die ganze Zeile. In der Ansicht
+„Ausgaben als Zeilen“ gilt das für den Spaltenkopf. Termine mit eigener
+Farbe behalten diese. Auf Wunsch entfernt das Fenster die eigenen Farben
+der Zeile.
+
+**Rückgängig:** Der Knopf *↶ Rückgängig* über dem Terminplan, oder Strg+Z
+bzw. Cmd+Z, nimmt die letzte Änderung am Plan zurück, Schritt für Schritt.
+Das gilt für Termine, Farben, Versandtermine, freie Tage, Regelwerk und
+Prüfung. Die Zahl im Knopf zeigt, wie viele Schritte zurück möglich sind
+(bis zu 60). Tippen in einem Feld zählt als ein Schritt. Der Verlauf gilt,
+solange die Seite offen ist.
+
 ## Feiertage
 
 Voreingestellt sind die gesetzlichen Feiertage in **Bayern, Berlin und

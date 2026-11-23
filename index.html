@@ -735,6 +735,20 @@ td.cell.farbe.shifted::after{background:var(--ink-3)}
 .dlg .sw:hover{border-color:var(--ink)}
 .dlg .sw[aria-checked="true"]{outline:2px solid var(--ink);outline-offset:1px}
 .dlg .sw.keine{background:linear-gradient(135deg,transparent 46%,var(--crit) 46% 54%,transparent 54%),var(--surface)}
+
+/* ---------- Zeilenfarben und Rückgängig ---------- */
+th.rowhead.klick,th.stepcol.klick{cursor:pointer}
+th.rowhead.klick:hover .stepname,th.stepcol.klick:hover{text-decoration:underline;text-underline-offset:3px}
+table.plan th.rowhead.farbe,table.plan tbody tr:hover th.rowhead.farbe{background:var(--fb)}
+table.plan th.stepcol.farbe{background:var(--fb)}
+tr.milestone th.rowhead.farbe{color:var(--ink)}
+tr.milestone th.rowhead.farbe .stepnr,tr.milestone th.rowhead.farbe .wdbadge.fix{color:var(--ink);border-color:var(--ink)}
+.dlg .einzel{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--ink-2)}
+.dlg .zeilenhinweis{font-size:11.5px;color:var(--ink-3)}
+.btn.rueck .uz{font-family:var(--mono);font-size:10px;margin-left:6px;background:var(--surface-3);padding:0 5px}
+.btn.rueck:disabled{opacity:.45;cursor:default}
+.btn.rueck:disabled:hover{background:var(--surface);border-color:var(--line-2);color:var(--ink-2)}
+tr.milestone th.rowhead.farbe{background:var(--fb) !important}
 </style>
 
 <header class="topbar">
@@ -1441,6 +1455,7 @@ function defaultState(year){
     ferienExtra: [], /* eigene Ferienzeiträume {id,name,von,bis} */
     geprueft: {},    /* abgehakte Befunde der Prüfung: Schlüssel -> Datum */
     farben: {},      /* eingefärbte Termine: "<Ausgaben-Id>:<Schritt-Nr>" -> 1…8 */
+    zeilenFarben: {},/* eingefärbte Schritte (ganze Zeile): Schritt-Nr -> 1…8 */
     overrides: {},   /* manuelle Termine, Schlüssel "<Ausgaben-Id>:<Schritt-Nr>" */
     rechenweise: "arbeitstage",
     regelstand: REGELSTAND,       /* Stand der gelernten Regeln in state.steps */
@@ -1453,7 +1468,7 @@ function defaultState(year){
 function normState(raw, year){
   var s = raw && typeof raw === "object" ? raw : {};
   var d = defaultState(year || s.year || 2027);
-  ["year","issues","steps","regions","holOff","holOn","holExtra","ferienAn","ferienFrei","ferienExtra","geprueft","farben","overrides","view","orientation","selected","rechenweise","regelstand"]
+  ["year","issues","steps","regions","holOff","holOn","holExtra","ferienAn","ferienFrei","ferienExtra","geprueft","farben","zeilenFarben","overrides","view","orientation","selected","rechenweise","regelstand"]
     .forEach(function(k){ if (s[k] !== undefined && s[k] !== null) d[k] = s[k]; });
   if (!d.overrides || typeof d.overrides !== "object") d.overrides = {};
   if (!Array.isArray(d.regions)) d.regions = STANDARD_LAENDER.slice();
@@ -1487,7 +1502,7 @@ function normState(raw, year){
 function planInhalt(){
   return {year:state.year, issues:state.issues, steps:state.steps, regions:state.regions,
           holOff:state.holOff, holOn:state.holOn, holExtra:state.holExtra,
-          ferienAn:!!state.ferienAn, ferienFrei:state.ferienFrei || [], ferienExtra:state.ferienExtra || [], geprueft:state.geprueft || {}, farben:state.farben || {}, overrides:state.overrides,
+          ferienAn:!!state.ferienAn, ferienFrei:state.ferienFrei || [], ferienExtra:state.ferienExtra || [], geprueft:state.geprueft || {}, farben:state.farben || {}, zeilenFarben:state.zeilenFarben || {}, overrides:state.overrides,
           orientation:state.orientation, rechenweise:state.rechenweise, regelstand:state.regelstand};
 }
 function istGesperrt(){ return !!planMeta && planMeta.status === "fertig"; }
@@ -1960,8 +1975,44 @@ function planStand(){
   return planMeta ? JSON.stringify([planMeta.inhalt, planMeta.titel, planMeta.status]) : "";
 }
 function standMerken(){ standGesichert = planStand(); }
+/* Rückgängig: Jede Änderung am Plan legt den Stand davor ab (höchstens 60).
+   Tippen in einem Feld zählt als eine Änderung. Die Ansicht
+   (Schritte/Ausgaben als Zeilen) gehört nicht dazu. */
+var verlauf = [], verlaufStand = null, verlaufZeit = 0, verlaufAus = false, verlaufFeld = null;
+function verlaufJetzt(){ var s = planInhalt(); delete s.orientation; return JSON.stringify(s); }
+function verlaufNeu(){ verlauf = []; verlaufStand = verlaufJetzt(); verlaufZeit = 0; }
+function verlaufMerken(){
+  var jetzt = verlaufJetzt();
+  if (verlaufStand === null || verlaufAus){ verlaufStand = jetzt; return; }
+  if (jetzt === verlaufStand) return;
+  /* Tippen im selben Feld kurz hintereinander ergibt einen Schritt, nicht einen je Taste */
+  var f = document.activeElement;
+  var tippt = !!f && ((f.tagName === "INPUT" && /^(text|number|search|)$/.test(f.type)) || f.tagName === "TEXTAREA");
+  if (!(tippt && f === verlaufFeld && Date.now() - verlaufZeit < 1500)) verlauf.push(verlaufStand);
+  if (verlauf.length > 60) verlauf.shift();
+  verlaufFeld = tippt ? f : null;
+  verlaufZeit = Date.now();
+  verlaufStand = jetzt;
+}
+var VERLAUF_NAMEN = {overrides:"Termin", farben:"Farbe", zeilenFarben:"Zeilenfarbe", issues:"Ausgaben", year:"Planungsjahr",
+  steps:"Regelwerk", regions:"Länder", holOff:"Feiertage", holOn:"Feiertage", holExtra:"freie Tage",
+  ferienAn:"Schulferien", ferienFrei:"Schulferien", ferienExtra:"Schulferien", geprueft:"Prüfung"};
+function rueckgaengig(){
+  if (!verlauf.length) { toast("Nichts mehr rückgängig zu machen"); return; }
+  if (!darfPlanAendern()){ toast(istGesperrt() ? "Der Plan ist freigegeben – zum Ändern erst entsperren" : "Ändern dürfen nur Admins"); return; }
+  var vorher = JSON.parse(verlauf.pop()), jetzt = JSON.parse(verlaufJetzt()), was = [];
+  Object.keys(vorher).forEach(function(k){
+    if (JSON.stringify(vorher[k]) !== JSON.stringify(jetzt[k]) && VERLAUF_NAMEN[k] && was.indexOf(VERLAUF_NAMEN[k]) < 0) was.push(VERLAUF_NAMEN[k]);
+    state[k] = vorher[k];
+  });
+  el("yearInput").value = state.year;
+  undoSnapshot = null;
+  verlaufAus = true; render(); verlaufAus = false;
+  toast("Rückgängig" + (was.length ? ": " + was.join(", ") : ""));
+}
 function save(){
   if (!planMeta || !istAdmin()) return;
+  verlaufMerken();
   planMeta.inhalt = planInhalt();
   planMeta.jahr = state.year;
   if (planStand() === standGesichert) return;
@@ -2278,6 +2329,7 @@ function render(withRail){
 function rendernJetzt(withRail){
   profileLaden();
   if (!zugangPruefen()) return;
+  if (planMeta && istAdmin()) verlaufMerken();   /* damit der Knopf „Rückgängig“ gleich stimmt */
   model = buildModel();
   if (withRail !== false){
     railNeu = false;
@@ -2503,6 +2555,12 @@ var Dialog = {
 el("dlgBack").addEventListener("click", function(){ Dialog.schliesse(); });
 document.addEventListener("keydown", function(e){
   if (e.key === "Escape" && Dialog.offen) Dialog.schliesse();
+  /* Strg+Z / Cmd+Z: Rückgängig – nicht beim Tippen in einem Feld */
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === "z" || e.key === "Z") && !Dialog.offen){
+    var f = document.activeElement, tag = f && f.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (f && f.isContentEditable)) return;
+    e.preventDefault(); rueckgaengig();
+  }
 });
 el("dlg").addEventListener("click", function(e){
   var b = e.target.closest("[data-dlg]");
@@ -2545,7 +2603,7 @@ function openPop(issueId, stepNr){
   if (!x) return;
   var r = x.byNr.get(stepNr), auto = x.autoByNr.get(stepNr);
   if (!r) return;
-  var key = x.id + ":" + stepNr, feld = iso(r.date), farbe = farbeVon(x.id, stepNr), farbeAlt = farbe;
+  var key = x.id + ":" + stepNr, feld = iso(r.date), farbe = farbeZelle(x.id, stepNr), farbeAlt = farbe, zeilenF = farbeZeile(stepNr);
   var aktionen = [{k:"ok", label:"Übernehmen", art:"primary"}];
   if (r.manual) aktionen.push({k:"auto", label:"Automatik"});
   aktionen.push({k:"ab", label:"Abbrechen", art:"ghost"});
@@ -2579,13 +2637,8 @@ function openPop(issueId, stepNr){
       (istPhase(r) ? '<br>Arbeitsphase ab '+wd(r.start)+' '+fmt(r.start)+' – das Datum hier ist ihr letzter Tag.' : '')+'</div>'+
     '<div class="folge" id="dlgFolge"></div>'+
     '<div class="warnline" id="dlgWarn"></div>'+
-    '<div class="farbwahl"><span class="flbl" id="dlgFarbLbl">Farbe</span>'+
-      '<div class="swatches" role="radiogroup" aria-labelledby="dlgFarbLbl">'+
-      '<button type="button" class="sw keine" role="radio" data-farbe="0" aria-checked="'+(!farbe)+'" title="Keine Farbe" aria-label="Keine Farbe"></button>'+
-      FARBEN.map(function(f){
-        return '<button type="button" class="sw" role="radio" data-farbe="'+f.n+'" style="--fb:var(--mark-'+f.n+')" aria-checked="'+(farbe === f.n)+
-               '" title="'+f.name+'" aria-label="'+f.name+'"></button>';
-      }).join("")+'</div></div>',
+    farbwahlHTML(farbe, zeilenF ? "Keine eigene Farbe" : "Keine Farbe")+
+    (zeilenF ? '<div class="zeilenhinweis">Ohne eigene Farbe gilt die Farbe der Zeile: '+FARBEN[zeilenF-1].name+'.</div>' : ""),
     aktionen,
     function(d){
       var i = d.querySelector("#dlgDatum"), w = d.querySelector("#dlgWarn"), fo = d.querySelector("#dlgFolge");
@@ -2608,12 +2661,7 @@ function openPop(issueId, stepNr){
         w.textContent = msg.length ? "Hinweis: " + msg.join(", ") + "." : "";
       }
       i.addEventListener("input", pruefe);
-      d.querySelector(".swatches").addEventListener("click", function(e){
-        var s = e.target.closest("[data-farbe]");
-        if (!s) return;
-        farbe = +s.dataset.farbe;
-        Array.prototype.forEach.call(d.querySelectorAll(".sw"), function(x){ x.setAttribute("aria-checked", +x.dataset.farbe === farbe); });
-      });
+      farbwahlVerbinden(d, function(f){ farbe = f; });
       pruefe(); i.focus();
     });
 }
@@ -2666,7 +2714,61 @@ var FARBEN = [
   {n:5, name:"Türkis",  hex:"C9E9E6"}, {n:6, name:"Blau",    hex:"D0DFF6"},
   {n:7, name:"Violett", hex:"E2D5F2"}, {n:8, name:"Grau",    hex:"DDE2E6"}
 ];
-function farbeVon(issueId, nr){ var f = state.farben && state.farben[issueId + ":" + nr]; return f >= 1 && f <= 8 ? f : 0; }
+/* Eigene Farbe eines Termins; sonst gilt die Farbe seiner Zeile */
+function farbeZelle(issueId, nr){ var f = state.farben && state.farben[issueId + ":" + nr]; return f >= 1 && f <= 8 ? f : 0; }
+function farbeZeile(nr){ var f = state.zeilenFarben && state.zeilenFarben[nr]; return f >= 1 && f <= 8 ? f : 0; }
+function farbeVon(issueId, nr){ return farbeZelle(issueId, nr) || farbeZeile(nr); }
+function farbwahlHTML(farbe, ohneText){
+  return '<div class="farbwahl"><span class="flbl" id="dlgFarbLbl">Farbe</span>'+
+    '<div class="swatches" role="radiogroup" aria-labelledby="dlgFarbLbl">'+
+    '<button type="button" class="sw keine" role="radio" data-farbe="0" aria-checked="'+(!farbe)+'" title="'+ohneText+'" aria-label="'+ohneText+'"></button>'+
+    FARBEN.map(function(f){
+      return '<button type="button" class="sw" role="radio" data-farbe="'+f.n+'" style="--fb:var(--mark-'+f.n+')" aria-checked="'+(farbe === f.n)+
+             '" title="'+f.name+'" aria-label="'+f.name+'"></button>';
+    }).join("")+'</div></div>';
+}
+function farbwahlVerbinden(d, setzen){
+  d.querySelector(".swatches").addEventListener("click", function(e){
+    var s = e.target.closest("[data-farbe]");
+    if (!s) return;
+    setzen(+s.dataset.farbe);
+    Array.prototype.forEach.call(d.querySelectorAll(".sw"), function(x){ x.setAttribute("aria-checked", x === s); });
+  });
+}
+/* Ganze Zeile (Schritt) einfärben – Klick auf den Namen des Schritts */
+function openZeile(nr){
+  if (!istAdmin()){ toast("Farben ändern dürfen nur Admins"); return; }
+  if (istGesperrt()){ toast("Der Plan ist freigegeben – zum Ändern erst entsperren"); return; }
+  var st = model.steps.filter(function(s){ return s.nr === nr; })[0];
+  if (!st) return;
+  var farbe = farbeZeile(nr), eigene = state.issues.filter(function(x){ return farbeZelle(x.id, nr); }).length;
+  Dialog._ok = function(k){
+    if (k !== "ok") return;
+    var zf = Object.assign({}, state.zeilenFarben || {});
+    if (farbe) zf[nr] = farbe; else delete zf[nr];
+    state.zeilenFarben = zf;
+    var box = el("dlgEinzel");
+    if (box && box.checked){
+      var fa = Object.assign({}, state.farben || {});
+      state.issues.forEach(function(x){ delete fa[x.id + ":" + nr]; });
+      state.farben = fa;
+    }
+    render();
+    toast(farbe ? "Zeile eingefärbt: " + FARBEN[farbe-1].name : "Zeilenfarbe entfernt");
+  };
+  Dialog.zeige(
+    '<span class="who">Ganze Zeile</span>'+
+    '<h3 id="dlgTitel">'+nr+' · '+esc(st.label)+'</h3>'+
+    '<div class="auto">Die Farbe gilt für alle Termine dieses Schritts. Termine mit eigener Farbe behalten ihre.</div>'+
+    farbwahlHTML(farbe, "Keine Zeilenfarbe")+
+    (eigene ? '<label class="einzel"><input type="checkbox" id="dlgEinzel"> Eigene Farben der '+eigene+
+              (eigene === 1 ? ' Ausgabe' : ' Ausgaben')+' in dieser Zeile entfernen</label>' : ""),
+    [{k:"ok", label:"Übernehmen", art:"primary"}, {k:"ab", label:"Abbrechen", art:"ghost"}],
+    function(d){
+      farbwahlVerbinden(d, function(f){ farbe = f; });
+      var s = d.querySelector('.sw[aria-checked="true"]'); if (s) s.focus();
+    });
+}
 
 /* Arbeitsphase: Beginn, wenn er vor dem Termin liegt */
 function istPhase(r){ return r.start && +r.start !== +r.date; }
@@ -2715,7 +2817,8 @@ function viewPlan(){
   var kopf = alsZeilen
     ? is.map(function(x){ return '<th>'+esc(x.name)+'<span class="sub">'+wd(x.etag)+" "+fmtShort(x.etag)+'</span></th>'; })
     : model.steps.map(function(st){
-        return '<th class="stepcol" style="--ph:'+phaseOf(st).css+'"><span class="stepnr">'+st.nr+'</span> '+esc(st.label)+
+        var zf = farbeZeile(st.nr);
+        return '<th class="stepcol'+(zf ? " farbe" : "")+(darfPlanAendern() ? " klick" : "")+'" data-zeile="'+st.nr+'" title="Spalte einfärben" style="--ph:'+phaseOf(st).css+(zf ? ';--fb:var(--mark-'+zf+')' : "")+'"><span class="stepnr">'+st.nr+'</span> '+esc(st.label)+
                '<span class="sub">'+(st.wd ? WD_SHORT[st.wd-1] : "flex")+'</span></th>'; });
 
   var koerper = "", letztePhase = null;
@@ -2731,7 +2834,10 @@ function viewPlan(){
         '<span class="wdbadge'+(z.wd ? " fix" : "")+'">'+(z.wd ? WD_SHORT[z.wd-1] : z.ab ? "Phase" : z.dauer > 1 ? z.dauer+" AT" : "flex")+'</span>'
       : '<span class="stepname">'+esc(z.name)+'</span>';
     koerper += '<tr'+(alsZeilen && z.anchor === 0 ? ' class="milestone"' : "")+' style="--ph:'+ph.css+'">'+
-      '<th class="rowhead"><div class="steprow">'+titel+'</div></th>'+
+      (alsZeilen
+        ? '<th class="rowhead'+(farbeZeile(z.nr) ? " farbe" : "")+(darfPlanAendern() ? " klick" : "")+'" data-zeile="'+z.nr+'" title="Zeile einfärben"'+
+          (farbeZeile(z.nr) ? ' style="--fb:var(--mark-'+farbeZeile(z.nr)+')"' : "")+'><div class="steprow">'+titel+'</div></th>'
+        : '<th class="rowhead"><div class="steprow">'+titel+'</div></th>')+
       spalten.map(function(sp){
         var x = alsZeilen ? sp : z, st = alsZeilen ? z : sp;
         var r = x.byNr.get(st.nr);
@@ -2744,6 +2850,9 @@ function viewPlan(){
     '</tr></thead><tbody>'+koerper+'</tbody></table>';
 
   var tools =
+    (darfPlanAendern() ? '<button type="button" class="btn sm rueck" data-act="rueckgaengig"'+(verlauf.length ? "" : " disabled")+
+      ' title="Letzte Änderung zurücknehmen (Strg+Z)"><span aria-hidden="true">↶</span> Rückgängig'+
+      (verlauf.length ? '<span class="uz">'+verlauf.length+'</span>' : "")+'</button>' : "")+
     '<button type="button" class="btn sm" data-act="orient" data-v="steps" aria-pressed="'+alsZeilen+'">Schritte als Zeilen</button>'+
     '<button type="button" class="btn sm" data-act="orient" data-v="issues" aria-pressed="'+(!alsZeilen)+'">Ausgaben als Zeilen</button>';
   return card("Terminplan " + state.year, head + '<div class="tablewrap">'+body+'</div>', tools);
@@ -4018,12 +4127,15 @@ el("panel").addEventListener("click", function(e){
     else entfernen();
     return;
   }
+  var zk = e.target.closest("[data-zeile]");
+  if (zk){ openZeile(+zk.dataset.zeile); return; }
   var t = e.target.closest("[data-issue][data-step]");
   if (t && t.dataset.issue){ openPop(t.dataset.issue, +t.dataset.step); return; }
   var b = e.target.closest("[data-act]");
   if (!b) return;
   var a = b.dataset.act;
   if (a === "orient"){ state.orientation = b.dataset.v; renderPanel(); save(); }
+  else if (a === "rueckgaengig"){ rueckgaengig(); }
   else if (a === "pruefTab"){ state.pruefTab = b.dataset.v; renderPanel(); }
   else if (a === "geprueft" || a === "oeffnen" || a === "alleGeprueft" || a === "alleOffen"){
     if (!istAdmin()) return;
@@ -4208,7 +4320,7 @@ function planOeffnen(id){
   el("yearInput").value = state.year;
   Ablage.aufgabenOeffnen(pl.id);
   try{ localStorage.setItem(LAST_KEY, pl.id); }catch(e){}
-  planMeta.inhalt = planInhalt(); standMerken();
+  planMeta.inhalt = planInhalt(); standMerken(); verlaufNeu();
   render();
 }
 function planAnlegen(inhalt, titel, jahr){
@@ -4301,7 +4413,7 @@ Ablage.beiPlaenen = function(){
     var akt = plaene.filter(function(x){ return x.id === planMeta.id; })[0];
     if (akt && akt !== planMeta){
       planMeta = akt;
-      if (!sichernOffen){ state = normState(akt.inhalt, akt.jahr); standMerken(); railNeu = true; }
+      if (!sichernOffen){ state = normState(akt.inhalt, akt.jahr); standMerken(); railNeu = true; verlaufStand = null; }
     }
     /* anderswo gelöscht (oder der Ansichtsplatzhalter): nächsten Plan öffnen */
     if (!akt){ planMeta = null; aufgaben = []; irgendeinPlan(); return; }
