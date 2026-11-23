@@ -1455,7 +1455,7 @@ function defaultState(year){
     ferienExtra: [], /* eigene Ferienzeiträume {id,name,von,bis} */
     geprueft: {},    /* abgehakte Befunde der Prüfung: Schlüssel -> Datum */
     farben: {},      /* eingefärbte Termine: "<Ausgaben-Id>:<Schritt-Nr>" -> 1…8 */
-    zeilenFarben: {},/* eingefärbte Schritte (ganze Zeile): Schritt-Nr -> 1…8 */
+    zeilenFarben: {},/* eingefärbte Produktionsschritte (nur der Name): Schritt-Nr -> 1…8 */
     overrides: {},   /* manuelle Termine, Schlüssel "<Ausgaben-Id>:<Schritt-Nr>" */
     rechenweise: "arbeitstage",
     regelstand: REGELSTAND,       /* Stand der gelernten Regeln in state.steps */
@@ -1994,7 +1994,7 @@ function verlaufMerken(){
   verlaufZeit = Date.now();
   verlaufStand = jetzt;
 }
-var VERLAUF_NAMEN = {overrides:"Termin", farben:"Farbe", zeilenFarben:"Zeilenfarbe", issues:"Ausgaben", year:"Planungsjahr",
+var VERLAUF_NAMEN = {overrides:"Termin", farben:"Farbe", zeilenFarben:"Farbe des Schritts", issues:"Ausgaben", year:"Planungsjahr",
   steps:"Regelwerk", regions:"Länder", holOff:"Feiertage", holOn:"Feiertage", holExtra:"freie Tage",
   ferienAn:"Schulferien", ferienFrei:"Schulferien", ferienExtra:"Schulferien", geprueft:"Prüfung"};
 function rueckgaengig(){
@@ -2603,7 +2603,7 @@ function openPop(issueId, stepNr){
   if (!x) return;
   var r = x.byNr.get(stepNr), auto = x.autoByNr.get(stepNr);
   if (!r) return;
-  var key = x.id + ":" + stepNr, feld = iso(r.date), farbe = farbeZelle(x.id, stepNr), farbeAlt = farbe, zeilenF = farbeZeile(stepNr);
+  var key = x.id + ":" + stepNr, feld = iso(r.date), farbe = farbeZelle(x.id, stepNr), farbeAlt = farbe;
   var aktionen = [{k:"ok", label:"Übernehmen", art:"primary"}];
   if (r.manual) aktionen.push({k:"auto", label:"Automatik"});
   aktionen.push({k:"ab", label:"Abbrechen", art:"ghost"});
@@ -2637,8 +2637,7 @@ function openPop(issueId, stepNr){
       (istPhase(r) ? '<br>Arbeitsphase ab '+wd(r.start)+' '+fmt(r.start)+' – das Datum hier ist ihr letzter Tag.' : '')+'</div>'+
     '<div class="folge" id="dlgFolge"></div>'+
     '<div class="warnline" id="dlgWarn"></div>'+
-    farbwahlHTML(farbe, zeilenF ? "Keine eigene Farbe" : "Keine Farbe")+
-    (zeilenF ? '<div class="zeilenhinweis">Ohne eigene Farbe gilt die Farbe der Zeile: '+FARBEN[zeilenF-1].name+'.</div>' : ""),
+    farbwahlHTML(farbe, "Keine Farbe"),
     aktionen,
     function(d){
       var i = d.querySelector("#dlgDatum"), w = d.querySelector("#dlgWarn"), fo = d.querySelector("#dlgFolge");
@@ -2714,10 +2713,11 @@ var FARBEN = [
   {n:5, name:"Türkis",  hex:"C9E9E6"}, {n:6, name:"Blau",    hex:"D0DFF6"},
   {n:7, name:"Violett", hex:"E2D5F2"}, {n:8, name:"Grau",    hex:"DDE2E6"}
 ];
-/* Eigene Farbe eines Termins; sonst gilt die Farbe seiner Zeile */
+/* Farbe eines Termins (Zelle) und Farbe eines Produktionsschritts (nur sein
+   Name vorne in der Zeile – die Termine daneben bleiben, wie sie sind) */
 function farbeZelle(issueId, nr){ var f = state.farben && state.farben[issueId + ":" + nr]; return f >= 1 && f <= 8 ? f : 0; }
 function farbeZeile(nr){ var f = state.zeilenFarben && state.zeilenFarben[nr]; return f >= 1 && f <= 8 ? f : 0; }
-function farbeVon(issueId, nr){ return farbeZelle(issueId, nr) || farbeZeile(nr); }
+function farbeVon(issueId, nr){ return farbeZelle(issueId, nr); }
 function farbwahlHTML(farbe, ohneText){
   return '<div class="farbwahl"><span class="flbl" id="dlgFarbLbl">Farbe</span>'+
     '<div class="swatches" role="radiogroup" aria-labelledby="dlgFarbLbl">'+
@@ -2735,34 +2735,26 @@ function farbwahlVerbinden(d, setzen){
     Array.prototype.forEach.call(d.querySelectorAll(".sw"), function(x){ x.setAttribute("aria-checked", x === s); });
   });
 }
-/* Ganze Zeile (Schritt) einfärben – Klick auf den Namen des Schritts */
+/* Produktionsschritt einfärben – Klick auf seinen Namen */
 function openZeile(nr){
   if (!istAdmin()){ toast("Farben ändern dürfen nur Admins"); return; }
   if (istGesperrt()){ toast("Der Plan ist freigegeben – zum Ändern erst entsperren"); return; }
   var st = model.steps.filter(function(s){ return s.nr === nr; })[0];
   if (!st) return;
-  var farbe = farbeZeile(nr), eigene = state.issues.filter(function(x){ return farbeZelle(x.id, nr); }).length;
+  var farbe = farbeZeile(nr);
   Dialog._ok = function(k){
     if (k !== "ok") return;
     var zf = Object.assign({}, state.zeilenFarben || {});
     if (farbe) zf[nr] = farbe; else delete zf[nr];
     state.zeilenFarben = zf;
-    var box = el("dlgEinzel");
-    if (box && box.checked){
-      var fa = Object.assign({}, state.farben || {});
-      state.issues.forEach(function(x){ delete fa[x.id + ":" + nr]; });
-      state.farben = fa;
-    }
     render();
-    toast(farbe ? "Zeile eingefärbt: " + FARBEN[farbe-1].name : "Zeilenfarbe entfernt");
+    toast(farbe ? "Schritt eingefärbt: " + FARBEN[farbe-1].name : "Farbe des Schritts entfernt");
   };
   Dialog.zeige(
-    '<span class="who">Ganze Zeile</span>'+
+    '<span class="who">Produktionsschritt</span>'+
     '<h3 id="dlgTitel">'+nr+' · '+esc(st.label)+'</h3>'+
-    '<div class="auto">Die Farbe gilt für alle Termine dieses Schritts. Termine mit eigener Farbe behalten ihre.</div>'+
-    farbwahlHTML(farbe, "Keine Zeilenfarbe")+
-    (eigene ? '<label class="einzel"><input type="checkbox" id="dlgEinzel"> Eigene Farben der '+eigene+
-              (eigene === 1 ? ' Ausgabe' : ' Ausgaben')+' in dieser Zeile entfernen</label>' : ""),
+    '<div class="auto">Die Farbe gilt für den Namen des Schritts. Die Termine daneben bleiben unverändert und lassen sich einzeln einfärben.</div>'+
+    farbwahlHTML(farbe, "Keine Farbe"),
     [{k:"ok", label:"Übernehmen", art:"primary"}, {k:"ab", label:"Abbrechen", art:"ghost"}],
     function(d){
       farbwahlVerbinden(d, function(f){ farbe = f; });
@@ -2818,7 +2810,7 @@ function viewPlan(){
     ? is.map(function(x){ return '<th>'+esc(x.name)+'<span class="sub">'+wd(x.etag)+" "+fmtShort(x.etag)+'</span></th>'; })
     : model.steps.map(function(st){
         var zf = farbeZeile(st.nr);
-        return '<th class="stepcol'+(zf ? " farbe" : "")+(darfPlanAendern() ? " klick" : "")+'" data-zeile="'+st.nr+'" title="Spalte einfärben" style="--ph:'+phaseOf(st).css+(zf ? ';--fb:var(--mark-'+zf+')' : "")+'"><span class="stepnr">'+st.nr+'</span> '+esc(st.label)+
+        return '<th class="stepcol'+(zf ? " farbe" : "")+(darfPlanAendern() ? " klick" : "")+'" data-zeile="'+st.nr+'" title="Schritt einfärben" style="--ph:'+phaseOf(st).css+(zf ? ';--fb:var(--mark-'+zf+')' : "")+'"><span class="stepnr">'+st.nr+'</span> '+esc(st.label)+
                '<span class="sub">'+(st.wd ? WD_SHORT[st.wd-1] : "flex")+'</span></th>'; });
 
   var koerper = "", letztePhase = null;
@@ -2835,7 +2827,7 @@ function viewPlan(){
       : '<span class="stepname">'+esc(z.name)+'</span>';
     koerper += '<tr'+(alsZeilen && z.anchor === 0 ? ' class="milestone"' : "")+' style="--ph:'+ph.css+'">'+
       (alsZeilen
-        ? '<th class="rowhead'+(farbeZeile(z.nr) ? " farbe" : "")+(darfPlanAendern() ? " klick" : "")+'" data-zeile="'+z.nr+'" title="Zeile einfärben"'+
+        ? '<th class="rowhead'+(farbeZeile(z.nr) ? " farbe" : "")+(darfPlanAendern() ? " klick" : "")+'" data-zeile="'+z.nr+'" title="Schritt einfärben"'+
           (farbeZeile(z.nr) ? ' style="--fb:var(--mark-'+farbeZeile(z.nr)+')"' : "")+'><div class="steprow">'+titel+'</div></th>'
         : '<th class="rowhead"><div class="steprow">'+titel+'</div></th>')+
       spalten.map(function(sp){
@@ -3401,6 +3393,7 @@ var Xlsx = (function(){
     ["anzDatMan",     "datum",     "dunkel",    "orange",    "linie",   LINKS]
   ];
   for (var fi = 1; fi <= 8; fi++){
+    VORLAGEN.push(["txtF" + fi, "standard", "normal", "f" + fi, "hell", UMBRUCH]);
     VORLAGEN.push(["datF" + fi, "tagKurz", "normal", "f" + fi, "hell", LINKS]);
     VORLAGEN.push(["datManF" + fi, "tagKurz", "blauFett", "f" + fi, "hell", LINKS]);
     VORLAGEN.push(["rngF" + fi, "standard", "normal", "f" + fi, "hell", LINKS]);
@@ -3535,7 +3528,8 @@ function excelMappe(){
     }
     var anker = st.anchor === 0;
     var dauer = st.ab ? "bis " + (st.dauer || "") + " AT" : (st.dauer || 1) > 1 ? st.dauer + " AT" : "";
-    plan.push([{v:st.nr, s:S.zahl}, {v:st.label, s:anker ? S.txtE : S.txt}, {v:dauer, s:S.txt}].concat(is.map(function(x){
+    var zf = farbeZeile(st.nr);
+    plan.push([{v:st.nr, s:S.zahl}, {v:st.label, s:zf ? S["txtF" + zf] : anker ? S.txtE : S.txt}, {v:dauer, s:S.txt}].concat(is.map(function(x){
       var r = x.byNr.get(st.nr);
       if (!r) return {v:"", s:S.txt};
       var fb = farbeVon(x.id, st.nr);

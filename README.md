@@ -163,11 +163,11 @@ entfernt die Farbe. Wer nur die Farbe ändert, lässt das Datum unverändert.
 Die Farben erscheinen im Terminplan, in der Ausgaben-Ansicht und in der
 Excel-Datei (Blatt *Produktionsplan*). Sie werden mit dem Plan gespeichert.
 
-**Ganze Zeilen einfärben:** Ein Klick auf den Namen eines Schritts vorne im
-Terminplan öffnet dieselbe Farbauswahl für die ganze Zeile. In der Ansicht
-„Ausgaben als Zeilen“ gilt das für den Spaltenkopf. Termine mit eigener
-Farbe behalten diese. Auf Wunsch entfernt das Fenster die eigenen Farben
-der Zeile.
+**Produktionsschritte einfärben:** Ein Klick auf den Namen eines Schritts
+vorne im Terminplan öffnet dieselbe Farbauswahl. Sie färbt nur den Namen des
+Schritts. Die Termine daneben bleiben unverändert und lassen sich einzeln
+einfärben. In der Ansicht „Ausgaben als Zeilen“ gilt das für den Spaltenkopf.
+In der Excel-Datei ist der Name des Schritts eingefärbt.
 
 **Rückgängig:** Der Knopf *↶ Rückgängig* über dem Terminplan, oder Strg+Z
 bzw. Cmd+Z, nimmt die letzte Änderung am Plan zurück, Schritt für Schritt.
